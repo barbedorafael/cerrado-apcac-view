@@ -127,25 +127,20 @@ def simplify_geodataframe(gdf, tolerance=0.001):
         return gdf_simplified
     return gdf
 
-def create_folium_map(gdf, style_map):
+def create_folium_map(gdf_simplified, style_map):
     """Cria o mapa Folium com os dados APCAC otimizado para performance"""
 
     # Calcular centro do mapa baseado nos dados
-    if gdf is not None and not gdf.empty:
-        bounds = gdf.total_bounds
-        center_lat = (bounds[1] + bounds[3]) / 2
-        center_lon = (bounds[0] + bounds[2]) / 2
-    else:
-        # Centro aproximado do Cerrado
-        center_lat = -15.7801
-        center_lon = -47.9292
+    bounds = gdf_simplified.total_bounds
+    center_lat = (bounds[1] + bounds[3]) / 2
+    center_lon = (bounds[0] + bounds[2]) / 2
 
     # Criar mapa base
     m = folium.Map(
         location=[center_lat, center_lon],
-        zoom_start=7,
+        # zoom_start=7,
         tiles=None,
-        prefer_canvas=True  # Melhor performance para muitos elementos
+        prefer_canvas=False  # Melhor performance para muitos elementos
     )
 
     # Adicionar camadas base
@@ -166,79 +161,55 @@ def create_folium_map(gdf, style_map):
     ).add_to(m)
 
     # Adicionar dados APCAC se disponíveis
-    if gdf is not None and not gdf.empty:
+    apcac_col = 'cd_apcac'
 
-        # Simplificar geometrias para melhor performance
-        gdf_simplified = simplify_geodataframe(gdf)
+    # Criar popup personalizado com código e descrição
+    def popup_text(feature):
+        apcac_code = feature['properties'].get(apcac_col, '')
+        description = style_map[apcac_code]['label']
+        return f"{description}"
+    
+    # Criar função de estilo otimizada
+    def style_function(feature):
+        apcac_code = feature['properties'].get(apcac_col, '')
+        color = style_map[apcac_code]['color']
 
-        # Verificar se existe coluna cd_apcac
-        apcac_col = None
-        possible_cols = ['cd_apcac', 'apcac', 'codigo', 'class']
-        for col in possible_cols:
-            if col in gdf_simplified.columns:
-                apcac_col = col
-                break
+        return {
+            'fillColor': color,
+            'color': '#333333',
+            'weight': 0.3,  # Linha mais fina para melhor performance
+            'fillOpacity': 0.6,
+            'opacity': 0.8
+        }
+    
+    # Limitar campos no tooltip para melhor performance
+    tooltip_fields = [apcac_col, 'nuareacont', 't', 'slope']
+    tooltip_aliases = ['APCAC:', 'Área (km²)', 'Elevação média (m)', 'Declividade média (%)']
 
-        if apcac_col:
-            # Criar função de estilo otimizada
-            def style_function(feature):
-                apcac_code = feature['properties'].get(apcac_col, '')
+    # Adicionar camada APCAC com configurações otimizadas
+    geojson_layer = folium.GeoJson(
+        gdf_simplified.to_json(),
+        style_function=style_function,
+        tooltip=folium.GeoJsonTooltip(
+            fields=[apcac_col],
+            aliases=['APCAC: '],
+            sticky=False,
+            labels=True
+        ),
+        popup=folium.GeoJsonPopup(
+            fields=tooltip_fields,
+            aliases=tooltip_aliases
+        ),
+        name='APCAC',
+        smooth_factor=1.0
+        )
 
-                if apcac_code in style_map:
-                    color = style_map[apcac_code]['color']
-                else:
-                    color = '#808080'  # Cor padrão
+    geojson_layer.add_to(m)
 
-                return {
-                    'fillColor': color,
-                    'color': '#333333',
-                    'weight': 0.3,  # Linha mais fina para melhor performance
-                    'fillOpacity': 0.6,
-                    'opacity': 0.8
-                }
-
-            # Limitar campos no tooltip para melhor performance
-            tooltip_fields = [apcac_col]
-            tooltip_aliases = ['APCAC:']
-
-            # Adicionar camada APCAC com configurações otimizadas
-            geojson_layer = folium.GeoJson(
-                gdf_simplified.to_json(),
-                style_function=style_function,
-                tooltip=folium.GeoJsonTooltip(
-                    fields=tooltip_fields,
-                    aliases=tooltip_aliases,
-                    sticky=False,
-                    labels=True
-                ),
-                popup=folium.GeoJsonPopup(
-                    fields=tooltip_fields,
-                    aliases=tooltip_aliases,
-                    max_width=250
-                ),
-                name='APCAC',
-                smooth_factor=1.0  # Suavizar polígonos
-            )
-
-            geojson_layer.add_to(m)
-
-        else:
-            # Se não encontrar coluna APCAC, adicionar camada simples
-            folium.GeoJson(
-                gdf_simplified.to_json(),
-                style_function=lambda x: {
-                    'fillColor': '#3388ff',
-                    'color': '#333333',
-                    'weight': 0.3,
-                    'fillOpacity': 0.5,
-                },
-                name='Dados APCAC'
-            ).add_to(m)
-
-        # Ajustar zoom para mostrar todos os dados
-        if hasattr(gdf_simplified, 'total_bounds'):
-            bounds = gdf_simplified.total_bounds
-            m.fit_bounds([[bounds[1], bounds[0]], [bounds[3], bounds[2]]])
+    # Ajustar zoom para mostrar todos os dados
+    if hasattr(gdf_simplified, 'total_bounds'):
+        bounds = gdf_simplified.total_bounds
+        m.fit_bounds([[bounds[1], bounds[0]], [bounds[3], bounds[2]]])
 
     # Adicionar controle de camadas
     folium.LayerControl().add_to(m)
@@ -388,6 +359,13 @@ def create_statistics_charts(df_stats, style_map):
         )
         st.plotly_chart(fig4, use_container_width=True)
 
+@st.cache_resource
+def build_cached_map(layer_name: str, style_map: dict, tolerance=0.001):
+    """Cria e cacheia o mapa Folium para uma camada específica"""
+    gdf = load_specific_layer(layer_name)
+    gdf_simplified = simplify_geodataframe(gdf, tolerance)
+    return create_folium_map(gdf_simplified, style_map)
+
 def main():
     """Função principal do dashboard"""
 
@@ -402,33 +380,10 @@ def main():
     - **Nível de Risco**: Alto Risco ou Sem Risco Específico
     """)
 
-    # Carregar dados com progresso detalhado
-    progress_bar = st.progress(0)
-    status_text = st.empty()
-
-    status_text.text('🔍 Verificando camadas disponíveis...')
-    progress_bar.progress(20)
-
+    # Carregar dados
     available_layers = get_available_layers()
-
-    status_text.text('🎨 Carregando estilos...')
-    progress_bar.progress(40)
-
     style_map = parse_qml_style()
-
-    status_text.text('📊 Carregando estatísticas...')
-    progress_bar.progress(60)
-
     df_stats = load_apcac_statistics()
-
-    status_text.text('✅ Dados carregados com sucesso!')
-    progress_bar.progress(100)
-
-    # Limpar indicadores de progresso
-    import time
-    time.sleep(1)
-    progress_bar.empty()
-    status_text.empty()
 
     # Controles na sidebar
     st.sidebar.markdown("### 🗂️ Configurações")
@@ -450,126 +405,26 @@ def main():
             index=default_index,
             help="Diferentes resoluções de análise das bacias hidrográficas"
         )
-
-        # Carregar dados da camada selecionada
-        with st.spinner(f'Carregando {selected_layer}...'):
-            gdf = load_specific_layer(selected_layer)
     else:
         st.error("Nenhuma camada APCAC encontrada")
-        gdf = None
 
     # Criar legenda
     create_legend(style_map)
 
     # Layout principal
-    col1, col2 = st.columns([3, 1])
+    # Criar e exibir mapa
+    with st.spinner('🗺️ Criando mapa...'):
+        m = build_cached_map(selected_layer, style_map)
 
-    with col1:
-        # Criar e exibir mapa
-        if gdf is not None:
-            with st.spinner('🗺️ Criando mapa...'):
-                folium_map = create_folium_map(gdf, style_map)
+    # Exibir mapa
+    st_folium(
+        m,
+        width=1400,
+        height=700,
+        returned_objects=[]
+    )
 
-            # Exibir mapa
-            map_data = st_folium(
-                folium_map,
-                width=900,
-                height=650,
-                returned_objects=["last_clicked", "last_object_clicked", "last_object_clicked_popup"],
-                key="main_map"
-            )
 
-        else:
-            st.error("Não foi possível carregar os dados do mapa")
-
-    with col2:
-        st.markdown("### 📊 Resumo da Camada")
-
-        if gdf is not None and not gdf.empty:
-            # Mostrar informações básicas
-            st.metric("Total de polígonos", f"{len(gdf):,}")
-
-            # Encontrar coluna APCAC
-            apcac_col = None
-            possible_cols = ['cd_apcac', 'apcac', 'codigo', 'class']
-            for col in possible_cols:
-                if col in gdf.columns:
-                    apcac_col = col
-                    break
-
-            if apcac_col:
-                unique_classes = gdf[apcac_col].nunique()
-                st.metric("Classes APCAC", unique_classes)
-
-            # Área total (se disponível)
-            try:
-                gdf_proj = gdf.to_crs('EPSG:5880')  # SIRGAS 2000 / Brazil Polyconic
-                total_area = gdf_proj.geometry.area.sum() / 1000000  # Converter para km²
-                st.metric("Área total", f"{total_area:,.0f} km²")
-            except:
-                st.warning("Área total: Não calculável")
-
-        else:
-            st.warning("Dados não disponíveis")
-
-        # Exibir atributos da feição clicada instantaneamente
-        st.markdown("---")
-        st.markdown("### 🎯 Atributos da Feição")
-
-        # Verificar se há dados do popup (que contém os atributos)
-        if map_data and map_data.get('last_object_clicked_popup'):
-            popup_content = map_data['last_object_clicked_popup']
-
-            # Extrair código APCAC do popup (formato: "APCAC: IICN")
-            if isinstance(popup_content, str) and "APCAC:" in popup_content:
-                apcac_code = popup_content.replace("APCAC:", "").strip()
-
-                if apcac_code:
-                    st.success("✅ Feição selecionada")
-
-                    # Mostrar código APCAC
-                    st.metric("CD_APCAC", apcac_code)
-
-                    # Mostrar descrição se disponível
-                    if apcac_code in style_map:
-                        st.caption(f"_{style_map[apcac_code]['label']}_")
-
-                        # Mostrar cor
-                        color = style_map[apcac_code]['color']
-                        st.markdown(
-                            f'<div style="width: 30px; height: 20px; background-color: {color}; '
-                            f'border: 1px solid #000; margin: 5px 0;"></div>',
-                            unsafe_allow_html=True
-                        )
-
-                    # Buscar outros atributos no GeoDataFrame original
-                    if gdf is not None:
-                        # Encontrar a linha correspondente
-                        apcac_col = None
-                        possible_cols = ['cd_apcac', 'apcac', 'codigo', 'class']
-                        for col in possible_cols:
-                            if col in gdf.columns:
-                                apcac_col = col
-                                break
-
-                        if apcac_col:
-                            matching_rows = gdf[gdf[apcac_col] == apcac_code]
-                            if not matching_rows.empty:
-                                row = matching_rows.iloc[0]
-
-                                # Mostrar outros atributos
-                                for col, value in row.items():
-                                    if col != apcac_col and col != 'geometry' and value is not None and str(value).strip():
-                                        if isinstance(value, (int, float)):
-                                            st.metric(col, f"{value:,}")
-                                        else:
-                                            st.write(f"**{col}**: {value}")
-                else:
-                    st.info("📝 Código APCAC não encontrado")
-            else:
-                st.info("📝 Dados do popup não reconhecidos")
-        else:
-            st.info("👆 Clique em uma área no mapa para ver seus atributos")
 
     # Seção de estatísticas completas
     st.markdown("---")
