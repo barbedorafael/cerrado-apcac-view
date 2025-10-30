@@ -11,14 +11,14 @@ from xml.etree import ElementTree as ET
 
 # Configuração da página
 st.set_page_config(
-    page_title="Dashboard APCAC - Cerrado",
+    page_title="APCAC - Cerrado",
     page_icon="🌳",
     layout="wide",
     initial_sidebar_state="expanded"
 )
 
 # Título principal
-st.title("🌳 Dashboard APCAC - Áreas Prioritárias para Conservação de Águas do Cerrado")
+st.title("🌳 Áreas Prioritárias para Conservação de Águas do Cerrado")
 st.markdown("---")
 
 @st.cache_data
@@ -457,16 +457,14 @@ def main():
     else:
         st.error("Nenhuma camada APCAC encontrada")
         gdf = None
-    
+
     # Criar legenda
     create_legend(style_map)
 
     # Layout principal
-    col1, col2 = st.columns([2, 1])
+    col1, col2 = st.columns([3, 1])
 
     with col1:
-        st.markdown("### 🗺️ Mapa Interativo")
-
         # Criar e exibir mapa
         if gdf is not None:
             with st.spinner('🗺️ Criando mapa...'):
@@ -475,14 +473,12 @@ def main():
             # Exibir mapa
             map_data = st_folium(
                 folium_map,
-                width=700,
-                height=500,
-                returned_objects=["last_object_clicked_popup"]
+                width=900,
+                height=650,
+                returned_objects=["last_clicked", "last_object_clicked", "last_object_clicked_popup"],
+                key="main_map"
             )
 
-            # Mostrar informações sobre clique
-            if map_data['last_object_clicked_popup']:
-                st.info("💡 Clique em uma área no mapa para ver mais detalhes")
         else:
             st.error("Não foi possível carregar os dados do mapa")
 
@@ -515,6 +511,65 @@ def main():
 
         else:
             st.warning("Dados não disponíveis")
+
+        # Exibir atributos da feição clicada instantaneamente
+        st.markdown("---")
+        st.markdown("### 🎯 Atributos da Feição")
+
+        # Verificar se há dados do popup (que contém os atributos)
+        if map_data and map_data.get('last_object_clicked_popup'):
+            popup_content = map_data['last_object_clicked_popup']
+
+            # Extrair código APCAC do popup (formato: "APCAC: IICN")
+            if isinstance(popup_content, str) and "APCAC:" in popup_content:
+                apcac_code = popup_content.replace("APCAC:", "").strip()
+
+                if apcac_code:
+                    st.success("✅ Feição selecionada")
+
+                    # Mostrar código APCAC
+                    st.metric("CD_APCAC", apcac_code)
+
+                    # Mostrar descrição se disponível
+                    if apcac_code in style_map:
+                        st.caption(f"_{style_map[apcac_code]['label']}_")
+
+                        # Mostrar cor
+                        color = style_map[apcac_code]['color']
+                        st.markdown(
+                            f'<div style="width: 30px; height: 20px; background-color: {color}; '
+                            f'border: 1px solid #000; margin: 5px 0;"></div>',
+                            unsafe_allow_html=True
+                        )
+
+                    # Buscar outros atributos no GeoDataFrame original
+                    if gdf is not None:
+                        # Encontrar a linha correspondente
+                        apcac_col = None
+                        possible_cols = ['cd_apcac', 'apcac', 'codigo', 'class']
+                        for col in possible_cols:
+                            if col in gdf.columns:
+                                apcac_col = col
+                                break
+
+                        if apcac_col:
+                            matching_rows = gdf[gdf[apcac_col] == apcac_code]
+                            if not matching_rows.empty:
+                                row = matching_rows.iloc[0]
+
+                                # Mostrar outros atributos
+                                for col, value in row.items():
+                                    if col != apcac_col and col != 'geometry' and value is not None and str(value).strip():
+                                        if isinstance(value, (int, float)):
+                                            st.metric(col, f"{value:,}")
+                                        else:
+                                            st.write(f"**{col}**: {value}")
+                else:
+                    st.info("📝 Código APCAC não encontrado")
+            else:
+                st.info("📝 Dados do popup não reconhecidos")
+        else:
+            st.info("👆 Clique em uma área no mapa para ver seus atributos")
 
     # Seção de estatísticas completas
     st.markdown("---")
