@@ -4,7 +4,6 @@ import folium
 from streamlit_folium import st_folium
 import geopandas as gpd
 import sqlite3
-import json
 import pandas as pd
 import plotly.express as px
 from xml.etree import ElementTree as ET
@@ -140,7 +139,7 @@ def create_folium_map(gdf_simplified, style_map):
         location=[center_lat, center_lon],
         # zoom_start=7,
         tiles=None,
-        prefer_canvas=False  # Melhor performance para muitos elementos
+        prefer_canvas=True  # Melhor performance para muitos elementos
     )
 
     # Adicionar camadas base
@@ -153,9 +152,9 @@ def create_folium_map(gdf_simplified, style_map):
     ).add_to(m)
 
     folium.TileLayer(
-        tiles='https://server.arcgisonline.com/ArcGIS/rest/services/World_Terrain_Base/MapServer/tile/{z}/{y}/{x}',
-        attr='Esri Terrain',
-        name='Terrain',
+        tiles='https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}',
+        attr='Esri Standard',
+        name='Street Map',
         overlay=False,
         control=True
     ).add_to(m)
@@ -163,12 +162,6 @@ def create_folium_map(gdf_simplified, style_map):
     # Adicionar dados APCAC se disponíveis
     apcac_col = 'cd_apcac'
 
-    # Criar popup personalizado com código e descrição
-    def popup_text(feature):
-        apcac_code = feature['properties'].get(apcac_col, '')
-        description = style_map[apcac_code]['label']
-        return f"{description}"
-    
     # Criar função de estilo otimizada
     def style_function(feature):
         apcac_code = feature['properties'].get(apcac_col, '')
@@ -281,7 +274,7 @@ def create_statistics_charts(df_stats, style_map):
     df_chart['color'] = colors
 
     # Criar tabs para diferentes visualizações
-    tab1, tab2, tab3, tab4 = st.tabs(["📊 Área Bioma", "📈 % Bioma", "🌊 Área ZHI", "💧 % ZHI"])
+    tab1, tab2, tab3, tab4 = st.tabs(["Área Bioma", "% Bioma", "Área ZHI", "% ZHI"])
 
     with tab1:
         st.markdown("**Área no Bioma Cerrado (km²)**")
@@ -359,7 +352,7 @@ def create_statistics_charts(df_stats, style_map):
         )
         st.plotly_chart(fig4, use_container_width=True)
 
-@st.cache_resource
+@st.cache_resource(show_spinner=False)
 def build_cached_map(layer_name: str, style_map: dict, tolerance=0.001):
     """Cria e cacheia o mapa Folium para uma camada específica"""
     gdf = load_specific_layer(layer_name)
@@ -413,7 +406,7 @@ def main():
 
     # Layout principal
     # Criar e exibir mapa
-    with st.spinner('🗺️ Criando mapa...'):
+    with st.spinner('🗺️ Carregando mapa...'):
         m = build_cached_map(selected_layer, style_map)
 
     # Exibir mapa
