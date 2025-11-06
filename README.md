@@ -67,7 +67,7 @@ Siga as orientações do Instituto Cerrados quanto a licenciamento, citação e 
 ## Como Funciona
 - **Descoberta de camadas:** `get_available_layers()` consulta o catálogo do geopackage em busca de tabelas com prefixo `apcac_`. Novas camadas com o mesmo prefixo são reconhecidas automaticamente.
 - **Estilização:** `parse_qml_style()` converte regras XML do QGIS em um dicionário Python que relaciona códigos APCAC com cores em hexadecimal e rótulos descritivos, reutilizados na legenda e nos gráficos.
-- **Renderização do mapa:** `build_cached_map()` carrega e simplifica geodados com GeoPandas, envia para o Folium e guarda o resultado em cache para recarregamentos instantâneos quando o usuário altera abas ou configurações.
+- **Renderização do mapa:** `build_map()` carrega e simplifica geodados com GeoPandas, envia para o Folium e guarda o resultado em cache para recarregamentos instantâneos quando o usuário altera abas ou configurações.
 - **Estatísticas:** `create_statistics_charts()` lê o `apcac.csv` e visualiza as métricas de área em quatro gráficos de barras do Plotly (valores absolutos e percentuais para o bioma Cerrado e para a zona de influência hidrológica).
 - **Interface:** componentes do Streamlit organizam a barra lateral (informações do projeto, seleção de camada, legenda) e o conteúdo principal (mapa, estatísticas, referências).
 
@@ -78,14 +78,13 @@ Siga as orientações do Instituto Cerrados quanto a licenciamento, citação e 
 - Para estender o painel (ex.: novos gráficos ou camadas de contexto), siga o padrão de cache existente e reutilize o mapa de estilos ao colorir novas visualizações.
 
 ## Solução de Problemas
-- **Erros ao importar GDAL/Fiona:** instale as bibliotecas de desenvolvimento do GDAL antes do GeoPandas ou prefira um ambiente `conda-forge`.
+- **Erros ao importar libs:** instale as bibliotecas de desenvolvimento do GDAL antes do GeoPandas ou prefira um ambiente `conda-forge`.
 - **`apcac.gpkg` não encontrado:** verifique se o diretório `data/` está ao lado de `mapview.py` ou ajuste as constantes `gpkg_path`/`csv_path`.
 - **Mapa lento para carregar:** reduza a tolerância de simplificação padrão ou restrinja a extensão exibida; o cache só acelera após a primeira carga.
 - **Mapas base indisponíveis:** proxies corporativos ou ambientes offline podem bloquear os tiles da Esri; substitua por `folium.TileLayer('openstreetmap')` se necessário.
 
 ## Materiais Relacionados
-- `docs/report_A030FP03_cerrados_2025-10-14.pdf` resume os achados de pesquisa que embasam o APCAC.
-- O arquivo `data/LEIAME_006.txt` documenta o pacote de dados (em português).
+TODO
 
 ## Licença
-Este repositório não inclui uma licença de código aberto. Entre em contato com o Instituto Cerrados ou com as pessoas mantenedoras do projeto antes de redistribuir dados ou código.
+TODO
