@@ -4,7 +4,7 @@ Painel interativo em Streamlit que apresenta as *Áreas Prioritárias para Conse
 
 ## Principais Funcionalidades
 - Exibe polígonos das APCAC sobre mapas de base da Esri selecionáveis no Folium.
-- Lê camadas e estilos diretamente do geopackage distribuído pelo projeto de pesquisa.
+- Lê camadas e estilos diretamente do geopackage distribuído pelo projeto.
 - Mostra na barra lateral uma legenda agrupada por predominância natural/antrópica e nível de risco.
 - Apresenta estatísticas precomputadas de área para o bioma Cerrado e para a zona de influência hidrológica em gráficos interativos do Plotly.
 - Faz cache de camadas, estilos e mapas para manter a experiência no Streamlit responsiva.
@@ -18,8 +18,7 @@ Painel interativo em Streamlit que apresenta as *Áreas Prioritárias para Conse
 │   ├── indexes/        # Índices raster usados no projeto mais amplo
 │   ├── variables/      # Variáveis ambientais em raster (pares TIF/QML)
 │   └── index.csv       # Catálogo dos ativos disponíveis com metadados
-└── docs/
-    └── report_A030FP03_cerrados_2025-10-14.pdf  # Relatório do projeto
+└── docs/               # Documentação adicional
 ```
 
 Arquivos raster volumosos são mantidos localmente e não devem ser redistribuídos sem o consentimento do provedor dos dados. Preserve a estrutura de pastas relativa para que o aplicativo encontre os recursos.
@@ -78,7 +77,7 @@ Siga as orientações do Instituto Cerrados quanto a licenciamento, citação e 
 - Para estender o painel (ex.: novos gráficos ou camadas de contexto), siga o padrão de cache existente e reutilize o mapa de estilos ao colorir novas visualizações.
 
 ## Solução de Problemas
-- **Erros ao importar libs:** instale as bibliotecas de desenvolvimento do GDAL antes do GeoPandas ou prefira um ambiente `conda-forge`.
+- **Erros ao importar GDAL/Fiona:** instale as bibliotecas de desenvolvimento do GDAL antes do GeoPandas ou prefira um ambiente `conda-forge`.
 - **`apcac.gpkg` não encontrado:** verifique se o diretório `data/` está ao lado de `mapview.py` ou ajuste as constantes `gpkg_path`/`csv_path`.
 - **Mapa lento para carregar:** reduza a tolerância de simplificação padrão ou restrinja a extensão exibida; o cache só acelera após a primeira carga.
 - **Mapas base indisponíveis:** proxies corporativos ou ambientes offline podem bloquear os tiles da Esri; substitua por `folium.TileLayer('openstreetmap')` se necessário.
