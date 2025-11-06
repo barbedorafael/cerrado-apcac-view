@@ -218,9 +218,9 @@ def create_legend(style_map):
         # Organizar por categorias
         categories = {
             'Natural - Alto Risco': [],
-            'Natural - Sem Risco': [],
+            'Natural - Baixo Risco': [],
             'Antrópica - Alto Risco': [],
-            'Antrópica - Sem Risco': []
+            'Antrópica - Baixo Risco': []
         }
 
         for code, info in style_map.items():
@@ -230,11 +230,11 @@ def create_legend(style_map):
             if 'Predominância natural' in label and 'alto risco' in label:
                 categories['Natural - Alto Risco'].append((code, label, color))
             elif 'Predominância natural' in label:
-                categories['Natural - Sem Risco'].append((code, label, color))
+                categories['Natural - Baixo Risco'].append((code, label, color))
             elif 'Predominância antrópica' in label and 'alto risco' in label:
                 categories['Antrópica - Alto Risco'].append((code, label, color))
             elif 'Predominância antrópica' in label:
-                categories['Antrópica - Sem Risco'].append((code, label, color))
+                categories['Antrópica - Baixo Risco'].append((code, label, color))
 
         for category, items in categories.items():
             if items:
@@ -371,7 +371,7 @@ def main():
     As áreas são classificadas considerando:
     - **Predominância**: Natural ou Antrópica
     - **Importância Hidrológica**: Extremamente Alta, Muito Alta, Alta, Regular
-    - **Nível de Risco**: Alto Risco ou Sem Risco Específico
+    - **Nível de Risco de Degradação**: Alto ou Baixo Risco
     """)
 
     # Carregar dados
@@ -393,10 +393,18 @@ def main():
         elif 'apcac_nunivotto5' in available_layers:
             default_index = available_layers.index('apcac_nunivotto5')
 
+        # Lista de aliases (para exibir)
+        layer_alias = {
+            "apcac_nunivotto3": "Nível Otto 3 (regional)",
+            "apcac_nunivotto4": "Nível Otto 4 (intermediário)",
+            "apcac_nunivotto5": "Nível Otto 5 (local)"
+        }
+
         selected_layer = st.sidebar.selectbox(
             "Selecione uma camada:",
             available_layers,
             index=default_index,
+            format_func=lambda x: layer_alias.get(x, x),
             help="Diferentes resoluções de análise das bacias hidrográficas"
         )
     else:
