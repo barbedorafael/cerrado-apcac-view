@@ -353,11 +353,12 @@ def create_statistics_charts(df_stats, style_map):
         st.plotly_chart(fig4, use_container_width=True)
 
 @st.cache_resource(show_spinner=False)
-def build_cached_map(layer_name: str, style_map: dict, tolerance=0.001):
+def build_map(layer_name: str, style_map: dict, tolerance=0.001):
     """Cria e cacheia o mapa Folium para uma camada específica"""
     gdf = load_specific_layer(layer_name)
     gdf_simplified = simplify_geodataframe(gdf, tolerance)
-    return create_folium_map(gdf_simplified, style_map)
+    m = create_folium_map(gdf_simplified, style_map)
+    return m._repr_html_()
 
 def main():
     """Função principal do dashboard"""
@@ -407,19 +408,16 @@ def main():
     # Layout principal
     # Criar e exibir mapa
     with st.spinner('🗺️ Carregando mapa...'):
-        m = build_cached_map(selected_layer, style_map)
+        map_html = build_map(selected_layer, style_map)
 
     # Exibir mapa
-    st_folium(
-        m,
+    st.components.v1.html(
+        map_html,
         width=1400,
         height=700,
-        returned_objects=[]
     )
 
-
-
-    # Seção de estatísticas completas
+    # Seção de estatísticas
     st.markdown("---")
     st.markdown("### 📈 Estatísticas Detalhadas")
 
